@@ -56,7 +56,7 @@ h_1 = \text{LayerNorm}(X_\text{in})
 - Output projection $\rightarrow$ `(B, S, D)`
 
 Final attention output:
-$$\text{attn\_out} \in \mathbb{R}^{B \times S \times D}$$
+$$\text{attnout} \in \mathbb{R}^{B \times S \times D}$$
 
 #### 4. Attention Residual (Add in `Add + Normalize`)
 
@@ -161,7 +161,7 @@ FFN for expert $e \in E$:
 - $W_{1e} \in \mathbb{R}^{D \times d_{ff}}$
 - $W_{2e} \in \mathbb{R}^{d_{ff} \times D}$
 
-$$H_e = \sigma(X_\text{expert}[e,:,:] W_{1e}) \quad \in \mathbb{R}^{C \times d_{ff}$$
+$$H_e = \sigma(X_\text{expert}[e,:,:] W_{1e}) \quad \in \mathbb{R}^{C \times d_{ff}}$$
 
 $$Y_e = H_e W_{2e} \quad \in \mathbb{R}^{C \times D}$$
 
