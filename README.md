@@ -40,12 +40,13 @@ Example: `(B=8, S=1024, D=2048)` means the block receives:
 
 #### 2. LayerNorm before Attention
 
-$$
+\[
 h_1 = \text{LayerNorm}(X_\text{in})
-$$
+\]
 
-$$
-\Rightarrow{} h_1 \in \mathbb{R}^{B \times S \times D}$$
+\[
+\Rightarrow{} h_1 \in \mathbb{R}^{B \times S \times D}
+\]
 
 #### 3. Multi-Head Self-Attention
 
@@ -61,13 +62,13 @@ $$
 
 #### 4. Attention Residual (Add in `Add + Normalize`)
 
-$$
+\[
 x_{\text{attn}} = x_{\text{in}} + \text{attn\_out}
-$$
+\]
 
-$$
-\Rightarrow x_\text{attn} \in \mathbb{R}^{B \times S \times D}
-$$
+\[
+    \Rightarrow x_\text{attn} \in \mathbb{R}^{B \times S \times D}
+\]
 
 #### 5. LayerNorm before SwitchFFN (Normalize in `Add + Normalize`)
 
