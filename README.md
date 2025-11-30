@@ -62,13 +62,13 @@ $$\text{attnout} \in \mathbb{R}^{B \times S \times D}$$
 
 $$x_{\text{attn}} = x_{\text{in}} + \text{attn\_out}$$
 
-$$\Rightarrow x_\text{attn} \in \mathbb{R}^{B \times S \times D}$$
+$$\Rightarrow x_\text{attn} \in \mathbb{R}^{B \cdot S \times D}$$
 
 #### 5. LayerNorm before SwitchFFN (Normalize in `Add + Normalize`)
 
 $$h_2 = \text{LayerNorm}(x_\text{attn})$$
 
-$$\Rightarrow{ }h_2 \in \mathbb{R}^{B \times S \times D}$$
+$$\Rightarrow{ }h_2 \in \mathbb{R}^{B \cdot S \times D}$$
 
 This $h_2$ is **fed into the Router**.
 
@@ -76,84 +76,29 @@ This $h_2$ is **fed into the Router**.
 
 Router is a single linear layer mapping hidden state $h_2$ to expert logits:
 
-$$h_2 \in \mathbb{R}^{B \times S \times D} \qquad W_r \in \mathbb{R}^{D \times E}$$
+$$h_2 \in \mathbb{R}^{B \cdot S \times D} \qquad W_r \in \mathbb{R}^{D \times E}$$
 
 Router logits:
 
-$$\text{router\_logits} = h_2 W_r \in \mathbb{R}^{B \times S \times E}$$
+$$\text{router\_logits} = h_2 W_r \in \mathbb{R}^{B \cdot S \times E}$$
 
 Softmax over `E` experts:
 
-$$p \in \mathbb{R}^{B \times S \times E}$$
+$$p \in \mathbb{R}^{B \cdot S \times E}$$
 
 Select expert(s):
 
 1. `expert_idx`: Integer expert ID
 
-- **Top-1:** $\in \mathbb{R}^{B \times S}$
-- **Top-k:** $\in \mathbb{R}^{B \times S \times k}$
+- **Top-1:** $\in \mathbb{R}^{B \cdot S}$
+- **Top-k:** $\in \mathbb{R}^{B \cdot S \times k}$
 
 2. `gate_vals`: Scalar softmax probability
 
-- **Top-1:** $\in \mathbb{R}^{B \times S}$
-- **Top-k:** $\in \mathbb{R}^{B \times S \times k}$
+- **Top-1:** $\in \mathbb{R}^{B \cdot S}$
+- **Top-k:** $\in \mathbb{R}^{B \cdot S \times k}$
 
-#### 7. Construct Binary Routing Tensor R
-
-One-hot:
-$$
-R[b,s,e] = 1 \quad \text{if expert $e$ is assigned for token $(b,s)$}
-$$
-
-$$
-R \in \mathbb{R}^{B \times S \times E}
-$$
-
-#### 8. Compute Slot Indices (per Expert)
-
-One method is using cumulative sum trick:
-
-```python
-positions = R.cumsum(dim=1) - 1     # (B, S, E)
-slots = positions * R               # mask invalid values
-slot_idx = slots.long()             # (B, S, E)
-```
-
-#### 9. Mask Tokens that Overflow Capacity
-
-Capacity:
-$$C = \text{capacity\_factor} \times \big \lceil \frac{BS}{E} \big \rceil$$
-
-Validity mask:
-
-```python
-valid = (slot_idx < C)  # (B, S, E)
-```
-
-#### 10. Dispatch Tensor D
-
-Binary dispatch tensor &rarr; to pack tokens into expert batches
-$$R[b,s,e,c] = 1 \quad \text{if token $(b,s)$ is routed to expert $e$ at slot $c$}$$
-
-$$R \in \mathbb{R}^{B \times S \times E \times C}$$
-
-#### 11. Dispatch: Token &rarr; Per-Expert Batches
-
-Einsum:
-
-```python
-X_expert = torch.einsum("bsec,bsd -> ecd", R, h2)
-```
-
-Mathematically:
-
-$$X_\text{expert}[e,c,:] = \sum_{b,s} R[b,s,e,c] \cdot h_2[b,s,:]$$
-
-$$X_\text{expert} \in \mathbb{R}^{E \times C \times D}$$
-
-Where each $\text{expert}$ gets a batch size of $C$
-
-#### 12. Expert FFNs (`E` independent networks)
+#### 7. Expert FFNs (`E` independent networks)
 
 FFN for expert $e \in E$:
 
@@ -179,13 +124,13 @@ y_tokens = torch.einsum("bsec,ecd -> bsd", D, y_expert)
 Mathematically:
 $$y[b,s,:] = \sum_{e,c} D[b,s,e,c] \cdot y_{\text{expert}[e,c,:]}$$
 
-$$y_{\text{tokens}} \in \mathbb{R}^{B \times S \times D}$$
+$$y_{\text{tokens}} \in \mathbb{R}^{B \cdot S \times D}$$
 
 #### 14. Apply router `gate_vals`
 
 Recall:
 
-- `gate_vals` $\in \mathbb{R}^{B \times S \times k}$
+- `gate_vals` $\in \mathbb{R}^{B \cdot S \times k}$
 Gate scales output of chosen expert:
 
 ```python
